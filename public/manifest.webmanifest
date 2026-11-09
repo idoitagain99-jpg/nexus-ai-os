@@ -1,0 +1,12 @@
+{
+  "name": "NEXUS AI OS",
+  "short_name": "NEXUS AI",
+  "description": "Your Personal Multi-Agent AI Operating System",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0b1220",
+  "background_color": "#0b1220",
+  "icons": []
+}
