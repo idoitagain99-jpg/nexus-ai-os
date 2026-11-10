@@ -75,8 +75,12 @@ export default function App() {
     setAiLoading(true);
     try {
       const response = await fetch('/.netlify/functions/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, history: history.slice(-12) }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'AI request failed');
+      const raw = await response.text();
+      let data;
+      try { data = JSON.parse(raw); }
+      catch { throw new Error('Server returned non-JSON (HTTP ' + response.status + '): ' + raw.slice(0, 250)); }
+      if (!response.ok) throw new Error(data.error || data.message || ('AI request failed (HTTP ' + response.status + '): ' + JSON.stringify(data)));
+      if (!data.reply) throw new Error(data.error || 'The AI server returned no reply.');
       setMessages(m => [...m, { role: 'assistant', text: data.reply }]);
     } catch (error) {
       setMessages(m => [...m, { role: 'assistant', text: 'Connection error: ' + error.message + ' — Check that GEMINI_API_KEY is added in Netlify environment variables, then redeploy.' }]);
