@@ -30,6 +30,7 @@ export default function App() {
   const [newProject, setNewProject] = useState('');
   const [newTask, setNewTask] = useState('');
   const [chatInput, setChatInput] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
   const [messages, setMessages] = useState(() => readStore('nexus-chat', [
     { role: 'assistant', text: 'Hello! I am your NEXUS command interface. I can organize projects and tasks here. External AI actions will need an AI provider connection.' }
   ]));
@@ -64,12 +65,22 @@ export default function App() {
     setNewTask('');
   }
 
-  function sendMessage(e) {
+  async function sendMessage(e) {
     e.preventDefault();
-    if (!chatInput.trim()) return;
+    if (!chatInput.trim() || aiLoading) return;
     const text = chatInput.trim();
-    setMessages(m => [...m, { role: 'user', text }, { role: 'assistant', text: 'I have received your instruction. The local NEXUS workspace is active, but live AI execution is not connected yet. You can manage projects and tasks from the sidebar.' }]);
+    const history = [...messages, { role: 'user', text }];
+    setMessages(history);
     setChatInput('');
+    setAiLoading(true);
+    try {
+      const response = await fetch('/.netlify/functions/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, history: history.slice(-12) }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'AI request failed');
+      setMessages(m => [...m, { role: 'assistant', text: data.reply }]);
+    } catch (error) {
+      setMessages(m => [...m, { role: 'assistant', text: 'Connection error: ' + error.message + ' — Check that GEMINI_API_KEY is added in Netlify environment variables, then redeploy.' }]);
+    } finally { setAiLoading(false); }
   }
 
   const filteredTasks = useMemo(() => tasks.filter(t => t.title.toLowerCase().includes(searchText.toLowerCase())), [tasks, searchText]);
@@ -78,8 +89,8 @@ export default function App() {
     if (page === 'AI Commander') return <section className="panel chat-panel">
       <div className="section-title"><div><span className="eyebrow">COMMAND CENTER</span><h2>AI Commander</h2></div><span className="live-pill"><i /> Local workspace</span></div>
       <div className="messages">{messages.map((m, i) => <div className={'message ' + m.role} key={i}><div className="message-avatar">{m.role === 'assistant' ? <Bot size={17}/> : 'You'}</div><p>{m.text}</p></div>)}</div>
-      <form className="chat-form" onSubmit={sendMessage}><input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Give NEXUS an instruction..." /><button className="primary" type="submit"><Zap size={16}/> Send</button></form>
-      <p className="muted tiny">Live AI responses and actions require connecting an AI API. This screen currently saves your local chat history.</p>
+      <form className="chat-form" onSubmit={sendMessage}><input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Give NEXUS an instruction..." /><button className="primary" type="submit" disabled={aiLoading}><Zap size={16}/> {aiLoading ? "Thinking..." : "Send"}</button></form>
+      <p className="muted tiny">Powered by Gemini AI. Your chat history stays in this browser; AI requests use a secure server function.</p>
     </section>;
 
     if (page === 'Projects') return <section className="panel">
