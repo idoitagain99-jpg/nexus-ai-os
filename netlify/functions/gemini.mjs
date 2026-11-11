@@ -8,7 +8,7 @@ export default async (request) => {
 
   try {
     const body = await request.json();
-    const history = Array.isArray(body.history) ? body.history.slice(-12) : [];
+    const history = Array.isArray(body.history) ? body.history.filter(item => !(item?.role === 'assistant' && String(item.text || '').startsWith('Connection error:'))).slice(-6) : [];
     const contents = history
       .filter(item => item && (item.role === 'user' || item.role === 'assistant') && String(item.text || '').trim())
       .map(item => ({
@@ -29,7 +29,7 @@ export default async (request) => {
         },
         contents,
         // Gemini 3.8 Flash uses its default thinking/sampling settings.
-        generationConfig: { maxOutputTokens: 2048 }
+        generationConfig: { maxOutputTokens: 1024, thinkingConfig: { thinkingLevel: 'low' } }
       })
     });
 
