@@ -69,7 +69,7 @@ export default function App() {
     e.preventDefault();
     if (!chatInput.trim() || aiLoading) return;
     const text = chatInput.trim();
-    const history = [...messages, { role: 'user', text }];
+    const history = [...messages.filter(m => !(m.role === 'assistant' && String(m.text || '').startsWith('Connection error:'))), { role: 'user', text }];
     setMessages(history);
     setChatInput('');
     setAiLoading(true);
